@@ -1,440 +1,239 @@
-/**
- * TRAIL Background Script
- * Captures browsing history, stores locally in IndexedDB
- * Privacy-First: Zero external API calls. All data stays local.
- */
+// TRAIL Background Script
+// Tracks browsing history and builds constellation data
 
-// Database configuration
-const DB_NAME = 'TRAIL_Database';
-const DB_VERSION = 1;
-const STORE_NAME = 'browsing_history';
-const PURGE_DAYS = 30; // Auto-purge after 30 days (configurable)
-
-// Domain categories for color coding
-const DOMAIN_CATEGORIES = {
-  'tech': ['github.com', 'stackoverflow.com', 'stackoverflow.blog', 'developer.mozilla.org', 'docs.google.com', 'gitlab.com', 'bitbucket.org', 'codepen.io', 'jsfiddle.net', 'replit.com', 'vercel.com', 'netlify.com', 'aws.amazon.com', 'azure.microsoft.com', 'cloud.google.com', 'digitalocean.com', 'heroku.com'],
-  'social': ['twitter.com', 'x.com', 'facebook.com', 'instagram.com', 'linkedin.com', 'reddit.com', 'tiktok.com', 'youtube.com', 'twitch.tv', 'discord.com', 'whatsapp.com', 'telegram.org', 'snapchat.com', 'pinterest.com'],
-  'news': ['cnn.com', 'bbc.com', 'reuters.com', 'apnews.com', 'npr.org', 'theguardian.com', 'nytimes.com', 'washingtonpost.com', 'wsj.com', 'bloomberg.com', 'techcrunch.com', 'theverge.com', 'engadget.com', 'arstechnica.com', 'hackernews.ycombinator.com', 'news.ycombinator.com'],
-  'edu': ['wikipedia.org', 'wikimedia.org', 'khanacademy.org', 'coursera.org', 'edx.org', 'udemy.com', 'mit.edu', 'harvard.edu', 'stanford.edu', 'berkeley.edu', 'scholar.google.com', 'jstor.org', 'arxiv.org', 'researchgate.net', 'academia.edu'],
-  'shopping': ['amazon.com', 'ebay.com', 'walmart.com', 'target.com', 'bestbuy.com', 'etsy.com', 'shopify.com', 'aliexpress.com', 'alibaba.com', 'newegg.com', 'wayfair.com', 'overstock.com'],
-  'entertainment': ['netflix.com', 'hulu.com', 'disneyplus.com', 'hbomax.com', 'primevideo.com', 'spotify.com', 'apple.com/apple-music', 'soundcloud.com', 'bandcamp.com', 'crunchyroll.com', 'funimation.com', 'imdb.com', 'letterboxd.com'],
-  'finance': ['paypal.com', 'stripe.com', 'venmo.com', 'cash.app', 'robinhood.com', 'coinbase.com', 'binance.com', 'kraken.com', 'fidelity.com', 'schwab.com', 'vanguard.com', 'bankofamerica.com', 'chase.com', 'wellsfargo.com']
+// Category detection based on domain/URL patterns
+const CATEGORY_PATTERNS = {
+  tech: [
+    /github\.com/i, /stackoverflow\.com/i, /gitlab\.com/i, /bitbucket\.org/i,
+    /developer\.mozilla\.org/i, /docs\.google\.com/i, /codepen\.io/i,
+    /jsfiddle\.net/i, /repl\.it/i, /codesandbox\.io/i, /stackblitz\.com/i,
+    /npmjs\.com/i, /pypi\.org/i, /mvnrepository\.com/i, /nuget\.org/i,
+    /docker\.com/i, /kubernetes\.io/i, /aws\.amazon\.com/i, /azure\.microsoft\.com/i,
+    /cloud\.google\.com/i, /heroku\.com/i, /vercel\.com/i, /netlify\.com/i,
+    /jetbrains\.com/i, /visualstudio\.com/i, /vscode\.dev/i, /atom\.io/i,
+    /sublimetext\.com/i, /vim\.org/i, /neovim\.io/i, /emacs\.org/i,
+    /mdn\.web\.docs/i, /w3schools\.com/i, /freecodecamp\.org/i, /codecademy\.com/i,
+    /coursera\.org/i, /udemy\.com/i, /udacity\.com/i, /edx\.org/i,
+    /pluralsight\.com/i, /linkedin\.com\/learning/i, /skillshare\.com/i,
+    /hackerrank\.com/i, /leetcode\.com/i, /codewars\.com/i, /exercism\.org/i
+  ],
+  social: [
+    /reddit\.com/i, /twitter\.com/i, /x\.com/i, /facebook\.com/i, /instagram\.com/i,
+    /linkedin\.com/i, /tiktok\.com/i, /snapchat\.com/i, /pinterest\.com/i,
+    /tumblr\.com/i, /discord\.com/i, /slack\.com/i, /telegram\.org/i,
+    /whatsapp\.com/i, /signal\.org/i, /mastodon\.social/i, /bluesky\.web/i,
+    /threads\.net/i, /youtube\.com\/community/i, /youtube\.com\/channel/i
+  ],
+  news: [
+    /news\.google\.com/i, /cnn\.com/i, /bbc\.com/i, /nytimes\.com/i,
+    /washingtonpost\.com/i, /guardian\.com/i, /reuters\.com/i, /apnews\.com/i,
+    /npr\.org/i, /pbs\.org/i, /aljazeera\.com/i, /ft\.com/i,
+    /economist\.com/i, /bloomberg\.com/i, /wsj\.com/i, /techcrunch\.com/i,
+    /theverge\.com/i, /wired\.com/i, /arstechnica\.com/i, /engadget\.com/i,
+    /gizmodo\.com/i, /slashdot\.org/i, /hackernews\.iitty/i, /lobste\.rs/i,
+    /news\.ycombinator\.com/i, /producthunt\.com/i
+  ],
+  entertainment: [
+    /youtube\.com/i, /netflix\.com/i, /twitch\.tv/i, /spotify\.com/i,
+    /soundcloud\.com/i, /bandcamp\.com/i, /apple\.music/i, /music\.youtube\.com/i,
+    /hulu\.com/i, /disney\.plus/i, /hbo\.max/i, /primevideo\.com/i,
+    /crunchyroll\.com/i, /funimation\.com/i, /vrv\.co/i, /tubi\.tv/i,
+    /peacocktv\.com/i, /paramount\.plus/i, /roku\.com/i, /imdb\.com/i,
+    /rottentomatoes\.com/i, /letterboxd\.com/i, /goodreads\.com/i,
+    /fanfiction\.net/i, /archiveofourown\.org/i, /wattpad\.com/i
+  ],
+  shopping: [
+    /amazon\.com/i, /ebay\.com/i, /etsy\.com/i, /shopify\.com/i,
+    /aliexpress\.com/i, /taobao\.com/i, /alibaba\.com/i, /wish\.com/i,
+    /target\.com/i, /walmart\.com/i, /bestbuy\.com/i, /costco\.com/i,
+    /homedepot\.com/i, /lowes\.com/i, /ikea\.com/i, /wayfair\.com/i,
+    /asos\.com/i, /zappos\.com/i, /nike\.com/i, /adidas\.com/i,
+    /shein\.com/i, /fashionnova\.com/i, /revolve\.com/i, /ssense\.com/i,
+    /grailed\.com/i, /stockx\.com/i, /goat\.com/i, /depop\.com/i
+  ],
+  finance: [
+    /paypal\.com/i, /stripe\.com/i, /venmo\.com/i, /cash\.app/i,
+    /robinhood\.com/i, /coinbase\.com/i, /binance\.com/i, /kraken\.com/i,
+    /fidelity\.com/i, /vanguard\.com/i, /schwab\.com/i, /etrade\.com/i,
+    /mint\.intuit\.com/i, /creditkarma\.com/i, /nerdwallet\.com/i,
+    /bankofamerica\.com/i, /chase\.com/i, /wellsfargo\.com/i,
+    /citi\.com/i, /capitalone\.com/i, /discover\.com/i, /americanexpress\.com/i
+  ],
+  edu: [
+    /\.edu$/i, /coursera\.org/i, /khanacademy\.org/i, /duolingo\.com/i,
+    /udemy\.com/i, /edx\.org/i, /mit\.opencourseware/i, /harvard\.edu/i,
+    /stanford\.edu/i, /yale\.edu/i, /princeton\.edu/i, /berkeley\.edu/i,
+    /quizlet\.com/i, /chegg\.com/i, /brainly\.com/i, /sparknotes\.com/i,
+    /cliffsnotes\.com/i, /gradesaver\.com/i, /scholar\.google\.com/i,
+    /jstor\.org/i, /researchgate\.net/i, /academia\.edu/i, /arxiv\.org/i
+  ]
 };
 
-// Initialize IndexedDB
-function initDatabase() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-    
-    request.onupgradeneeded = (event) => {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
-        store.createIndex('url', 'url', { unique: false });
-        store.createIndex('timestamp', 'timestamp', { unique: false });
-        store.createIndex('domain', 'domain', { unique: false });
+function detectCategory(domain, url) {
+  for (const [category, patterns] of Object.entries(CATEGORY_PATTERNS)) {
+    for (const pattern of patterns) {
+      if (pattern.test(domain) || pattern.test(url)) {
+        return category;
       }
-    };
-  });
-}
-
-// Get category for a domain
-function getDomainCategory(domain) {
-  for (const [category, domains] of Object.entries(DOMAIN_CATEGORIES)) {
-    if (domains.some(d => domain.includes(d))) {
-      return category;
     }
   }
   return 'other';
 }
 
-// Extract domain from URL
-function extractDomain(url) {
+// Initialize storage
+chrome.runtime.onInstalled.addListener(async () => {
+  await chrome.storage.local.set({
+    trail_nodes: [],
+    trail_links: [],
+    trail_sessions: [],
+    last_update: Date.now()
+  });
+  console.log('✦ TRAIL initialized');
+});
+
+// Track active tab for session timing
+let activeTabId = null;
+let activeTabStartTime = null;
+
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  // End previous session
+  if (activeTabId && activeTabStartTime) {
+    await endSession(activeTabId, activeTabStartTime);
+  }
+  
+  // Start new session
+  activeTabId = activeTabId;
+  activeTabStartTime = Date.now();
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' && tab.url && tab.url.startsWith('http')) {
+    updateConstellationData(tab.url, tab.title, tab.favIconUrl);
+  }
+});
+
+chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
+  if (tabId === activeTabId && activeTabStartTime) {
+    await endSession(tabId, activeTabStartTime);
+    activeTabId = null;
+    activeTabStartTime = null;
+  }
+});
+
+async function endSession(tabId, startTime) {
+  const duration = Date.now() - startTime;
+  if (duration > 5000) { // Only track sessions > 5 seconds
+    try {
+      const tab = await chrome.tabs.get(tabId);
+      if (tab && tab.url && tab.url.startsWith('http')) {
+        const url = new URL(tab.url);
+        const domain = url.hostname.replace(/^www\./, '');
+        
+        const { trail_sessions = [] } = await chrome.storage.local.get(['trail_sessions']);
+        trail_sessions.push({
+          domain,
+          startTime,
+          duration,
+          url: tab.url
+        });
+        
+        // Keep only last 1000 sessions
+        if (trail_sessions.length > 1000) {
+          trail_sessions.shift();
+        }
+        
+        await chrome.storage.local.set({ trail_sessions });
+      }
+    } catch (e) {
+      // Tab may not exist
+    }
+  }
+}
+
+async function updateConstellationData(url, title, favIconUrl) {
   try {
     const urlObj = new URL(url);
-    return urlObj.hostname.replace('www.', '');
-  } catch {
-    return 'unknown';
-  }
-}
-
-// Store browsing data
-async function storeBrowsingData(data) {
-  const db = await initDatabase();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
+    const domain = urlObj.hostname.replace(/^www\./, '');
+    const category = detectCategory(domain, url);
+    const now = Date.now();
     
-    const record = {
-      url: data.url,
-      title: data.title || 'Untitled',
-      timestamp: data.timestamp || Date.now(),
-      content_snippet: data.content_snippet ? data.content_snippet.substring(0, 5000) : '',
-      domain: extractDomain(data.url),
-      category: getDomainCategory(extractDomain(data.url)),
-      dwell_time: data.dwell_time || 0,
-      entities: data.entities || []
-    };
+    const { trail_nodes = [], trail_links = [] } = await chrome.storage.local.get(['trail_nodes', 'trail_links']);
     
-    const request = store.add(record);
-    request.onsuccess = () => {
-      // Update counter for popup display
-      chrome.storage.local.get('trail_count', (data) => {
-        const newCount = (data.trail_count || 0) + 1;
-        chrome.storage.local.set({ trail_count: newCount });
+    // Find or create node
+    let nodeIndex = trail_nodes.findIndex(n => n.domain === domain);
+    if (nodeIndex === -1) {
+      trail_nodes.push({
+        id: domain,
+        domain,
+        visitCount: 1,
+        firstVisit: now,
+        lastVisit: now,
+        category,
+        title: title || domain
       });
-      resolve(request.result);
-    };
-    request.onerror = () => reject(request.error);
-  });
-}
-
-// Clean up old data (auto-purge)
-async function purgeOldData() {
-  const db = await initDatabase();
-  const cutoffTime = Date.now() - (PURGE_DAYS * 24 * 60 * 60 * 1000);
-  
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    const index = store.index('timestamp');
-    const range = IDBKeyRange.upperBound(cutoffTime);
-    
-    const request = index.openCursor(range);
-    let deletedCount = 0;
-    
-    request.onsuccess = (event) => {
-      const cursor = event.target.result;
-      if (cursor) {
-        store.delete(cursor.primaryKey);
-        deletedCount++;
-        cursor.continue();
-      } else {
-        console.log(`[TRAIL] Purged ${deletedCount} old records`);
-        resolve(deletedCount);
-      }
-    };
-    
-    request.onerror = () => reject(request.error);
-  });
-}
-
-// Listen for history updates
-chrome.history.onVisited.addListener(async (historyItem) => {
-  if (!historyItem.url || historyItem.url.startsWith('chrome://')) {
-    return;
-  }
-  
-  try {
-    // Check if we already have this URL recently (within 5 minutes)
-    const existing = await getRecentVisit(historyItem.url, 5 * 60 * 1000);
-    if (existing) {
-      return; // Skip duplicates within 5 minutes
+    } else {
+      trail_nodes[nodeIndex].visitCount = (trail_nodes[nodeIndex].visitCount || 0) + 1;
+      trail_nodes[nodeIndex].lastVisit = now;
+      trail_nodes[nodeIndex].category = category;
+      if (title) trail_nodes[nodeIndex].title = title;
     }
     
-    // Store initial record (content will be updated by content script)
-    await storeBrowsingData({
-      url: historyItem.url,
-      title: historyItem.title,
-      timestamp: historyItem.lastVisitTime || Date.now()
+    // Find recent connections (within 10 min)
+    const recentNodes = trail_nodes.filter(n => 
+      n.domain !== domain && 
+      now - n.lastVisit < 600000
+    );
+    
+    // Create links to recent nodes
+    recentNodes.forEach(recentNode => {
+      const existingLink = trail_links.find(l => 
+        (l.source === domain && l.target === recentNode.domain) ||
+        (l.source === recentNode.domain && l.target === domain)
+      );
+      
+      if (!existingLink) {
+        trail_links.push({
+          source: domain,
+          target: recentNode.domain,
+          strength: 1,
+          firstConnection: now
+        });
+      } else {
+        existingLink.strength = (existingLink.strength || 1) + 1;
+      }
     });
     
-    console.log(`[TRAIL] Captured: ${historyItem.url}`);
-  } catch (error) {
-    console.error('[TRAIL] Error storing history:', error);
-  }
-});
-
-// Check for recent visit
-async function getRecentVisit(url, timeWindow) {
-  const db = await initDatabase();
-  const cutoff = Date.now() - timeWindow;
-  
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    const index = store.index('url');
-    const request = index.openCursor(IDBKeyRange.only(url));
-    
-    request.onsuccess = (event) => {
-      const cursor = event.target.result;
-      if (cursor) {
-        if (cursor.value.timestamp > cutoff) {
-          resolve(cursor.value);
-          return;
-        }
-        cursor.continue();
-      } else {
-        resolve(null);
-      }
-    };
-    
-    request.onerror = () => reject(request.error);
-  });
-}
-
-// Update record with content from content script
-async function updateRecordWithContent(url, contentData) {
-  const db = await initDatabase();
-  
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    const index = store.index('url');
-    const request = index.openCursor(IDBKeyRange.only(url));
-    
-    request.onsuccess = (event) => {
-      const cursor = event.target.result;
-      if (cursor) {
-        const record = cursor.value;
-        record.content_snippet = contentData.content_snippet;
-        record.title = contentData.title || record.title;
-        record.entities = contentData.entities || [];
-        
-        const updateRequest = cursor.update(record);
-        updateRequest.onsuccess = () => resolve();
-        updateRequest.onerror = () => reject(updateRequest.error);
-      } else {
-        // No existing record, create new one
-        storeBrowsingData({
-          url: url,
-          title: contentData.title,
-          content_snippet: contentData.content_snippet,
-          entities: contentData.entities,
-          timestamp: Date.now()
-        }).then(resolve).catch(reject);
-      }
-    };
-    
-    request.onerror = () => reject(request.error);
-  });
-}
-
-// Listen for messages from content script
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'CONTENT_EXTRACTED') {
-    updateRecordWithContent(sender.tab.url, message.data)
-      .then(() => sendResponse({ success: true }))
-      .catch(err => sendResponse({ success: false, error: err.message }));
-    return true; // Keep message channel open for async
-  }
-  
-  if (message.type === 'GET_HISTORY') {
-    getHistoryData(message.timeRange)
-      .then(data => sendResponse({ success: true, data }))
-      .catch(err => sendResponse({ success: false, error: err.message }));
-    return true;
-  }
-  
-  if (message.type === 'EXPORT_DATA') {
-    exportAllData()
-      .then(data => sendResponse({ success: true, data }))
-      .catch(err => sendResponse({ success: false, error: err.message }));
-    return true;
-  }
-  
-  if (message.type === 'CLEAR_DATA') {
-    clearAllData()
-      .then(() => sendResponse({ success: true }))
-      .catch(err => sendResponse({ success: false, error: err.message }));
-    return true;
-  }
-});
-
-// Get history data with time range filter
-async function getHistoryData(timeRange = 'all') {
-  const db = await initDatabase();
-  let cutoff = 0;
-  
-  const now = Date.now();
-  switch (timeRange) {
-    case '24h':
-      cutoff = now - (24 * 60 * 60 * 1000);
-      break;
-    case '7d':
-      cutoff = now - (7 * 24 * 60 * 60 * 1000);
-      break;
-    case '30d':
-      cutoff = now - (30 * 24 * 60 * 60 * 1000);
-      break;
-    default:
-      cutoff = 0;
-  }
-  
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    const index = store.index('timestamp');
-    const range = IDBKeyRange.lowerBound(cutoff);
-    
-    const request = index.openCursor(range);
-    const results = [];
-    
-    request.onsuccess = (event) => {
-      const cursor = event.target.result;
-      if (cursor) {
-        results.push(cursor.value);
-        cursor.continue();
-      } else {
-        resolve(results.sort((a, b) => a.timestamp - b.timestamp));
-      }
-    };
-    
-    request.onerror = () => reject(request.error);
-  });
-}
-
-// Export all data as JSON
-async function exportAllData() {
-  const db = await initDatabase();
-  
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.getAll();
-    
-    request.onsuccess = () => {
-      const data = {
-        export_date: new Date().toISOString(),
-        version: '1.0.0',
-        records: request.result,
-        total_records: request.result.length
-      };
-      resolve(data);
-    };
-    
-    request.onerror = () => reject(request.error);
-  });
-}
-
-// Clear all data
-async function clearAllData() {
-  const db = await initDatabase();
-  
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.clear();
-    
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
-
-// Initialize on install/update
-chrome.runtime.onInstalled.addListener(() => {
-  console.log('[TRAIL] Extension installed/updated');
-  purgeOldData();
-});
-
-// Periodic cleanup (once per day)
-setInterval(purgeOldData, 24 * 60 * 60 * 1000);
-
-console.log('[TRAIL] THE GHOST is watching...');
-
-
-// ============================================
-// CONSTELLATION DATA PREPARATION
-// ============================================
-
-// Convert browsing history to constellation graph format
-async function updateConstellationData() {
-  try {
-    const db = await initDatabase();
-    const transaction = db.transaction([STORE_NAME], 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.getAll();
-    
-    request.onsuccess = () => {
-      const records = request.result;
-      
-      // Aggregate by domain
-      const domainMap = new Map();
-      
-      records.forEach(record => {
-        const domain = record.domain || extractDomain(record.url);
-        if (!domainMap.has(domain)) {
-          domainMap.set(domain, {
-            id: domain,
-            domain: domain,
-            visitCount: 0,
-            firstVisit: record.timestamp,
-            lastVisit: record.timestamp,
-            category: record.category || 'other'
-          });
-        }
-        
-        const node = domainMap.get(domain);
-        node.visitCount++;
-        node.lastVisit = Math.max(node.lastVisit, record.timestamp);
-        node.firstVisit = Math.min(node.firstVisit, record.timestamp);
-      });
-      
-      // Create nodes array
-      const nodes = Array.from(domainMap.values());
-      
-      // Create links based on temporal proximity (visited within 10 min)
-      const links = [];
-      const sortedRecords = [...records].sort((a, b) => a.timestamp - b.timestamp);
-      
-      for (let i = 0; i < sortedRecords.length - 1; i++) {
-        const current = sortedRecords[i];
-        const next = sortedRecords[i + 1];
-        const timeDiff = next.timestamp - current.timestamp;
-        
-        if (timeDiff < 10 * 60 * 1000) { // 10 minutes
-          const sourceDomain = current.domain || extractDomain(current.url);
-          const targetDomain = next.domain || extractDomain(next.url);
-          
-          if (sourceDomain !== targetDomain) {
-            links.push({
-              source: sourceDomain,
-              target: targetDomain
-            });
-          }
-        }
-      }
-      
-      // Save to storage for constellation visualization
-      chrome.storage.local.set({
-        trail_nodes: nodes,
-        trail_links: links
-      }, () => {
-        console.log('[TRAIL] Constellation data updated:', nodes.length, 'nodes,', links.length, 'links');
-      });
-    };
-  } catch (err) {
-    console.error('[TRAIL] Failed to update constellation data:', err);
-  }
-}
-
-// Update constellation data periodically
-setInterval(updateConstellationData, 60 * 1000); // Every minute
-
-// Also update when history changes
-chrome.history.onVisited.addListener(() => {
-  setTimeout(updateConstellationData, 1000); // Delay to let data be stored first
-});
-
-// Initial data load on startup
-updateConstellationData();
-
-// Debug function - call from background console to force refresh
-function debugConstellation() {
-  console.log('[TRAIL] Manual constellation refresh triggered');
-  updateConstellationData();
-  setTimeout(() => {
-    chrome.storage.local.get(['trail_nodes', 'trail_links'], (result) => {
-      console.log('[TRAIL] Current constellation data:', result);
+    await chrome.storage.local.set({
+      trail_nodes,
+      trail_links,
+      last_update: now
     });
-  }, 100);
+    
+  } catch (e) {
+    console.error('TRAIL error:', e);
+  }
 }
 
-// Make debug function available globally
-self.debugConstellation = debugConstellation;
-
-console.log('[TRAIL] Background script ready');
-console.log('[TRAIL] Run debugConstellation() in console to force refresh');
+// Handle messages from popup
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'openConstellation') {
+    chrome.tabs.create({ url: chrome.runtime.getURL('constellation.html') });
+  }
+  if (request.action === 'getData') {
+    chrome.storage.local.get(['trail_nodes', 'trail_links', 'last_update']).then(data => {
+      sendResponse(data);
+    });
+    return true; // Keep channel open for async
+  }
+  if (request.action === 'clearData') {
+    chrome.storage.local.set({
+      trail_nodes: [],
+      trail_links: [],
+      trail_sessions: [],
+      last_update: Date.now()
+    }).then(() => {
+      sendResponse({ success: true });
+    });
+    return true;
+  }
+});
