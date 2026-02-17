@@ -3,77 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <style>
-    body {
-      width: 300px;
-      padding: 20px;
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #0a0a0f;
-      color: #f1f5f9;
+    body { 
+      width: 280px; 
+      padding: 16px; 
+      font-family: sans-serif;
+      background: #1a1a2e;
+      color: white;
       margin: 0;
     }
-    h1 {
-      margin: 0 0 15px 0;
-      font-size: 18px;
-      color: #6366f1;
-    }
-    .count {
-      background: #12121a;
-      padding: 12px;
-      border-radius: 8px;
-      margin-bottom: 15px;
-      border: 1px solid #27272a;
-    }
-    .count-label {
-      font-size: 11px;
-      color: #64748b;
-      text-transform: uppercase;
-    }
-    .count-value {
-      font-size: 20px;
-      color: #4ecca3;
-      font-weight: bold;
-    }
-    button {
-      width: 100%;
-      padding: 14px;
-      background: linear-gradient(135deg, #6366f1, #8b5cf6);
-      border: none;
-      border-radius: 8px;
-      color: white;
-      font-size: 14px;
-      font-weight: 600;
+    h1 { margin: 0 0 12px 0; font-size: 16px; color: #6366f1; }
+    button { 
+      width: 100%; 
+      padding: 12px; 
+      background: #6366f1; 
+      color: white; 
+      border: none; 
+      border-radius: 6px; 
       cursor: pointer;
-    }
-    button:hover {
-      opacity: 0.9;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
   <h1>◉ TRAIL</h1>
-  
-  <div class="count">
-    <div class="count-label">Websites Mapped</div>
-    <div class="count-value" id="count">-</div>
-  </div>
-  
-  <button id="btn">Open Constellation Map</button>
-
+  <button onclick="openMap()">Open Constellation Map</button>
   <script>
-    // Simple synchronous approach
-    document.getElementById('btn').addEventListener('click', function() {
+    function openMap() {
       chrome.tabs.create({url: 'constellation.html'});
-      window.close();
-    });
-    
-    // Try to get count
-    try {
-      chrome.storage.local.get('trail_count', function(data) {
-        var count = data.trail_count || 0;
-        document.getElementById('count').textContent = count;
-      });
-    } catch(e) {
-      document.getElementById('count').textContent = '?';
     }
   </script>
 </body>
