@@ -1,20 +1,358 @@
-<!-- TRAIL — Personal Browsing Visualizer -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TRAIL - Your Digital Constellation</title>
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://unpkg.com/compromise@14.10.0/builds/compromise.min.js"></script>
-  <style>
-    body { margin: 0; overflow: hidden; background: #0a0a0f; }
-    #constellation-canvas { width: 100vw; height: 100vh; cursor: grab; }
-    #constellation-canvas:active { cursor: grabbing; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRAIL Constellation Map</title>
+    <script src="lib/d3.v7.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a0f 50%, #000000 100%);
+            color: #e0e0ff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+        
+        .nebula {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.4;
+        }
+        
+        .nebula-1 {
+            background: radial-gradient(circle at 20% 30%, rgba(120, 50, 200, 0.3) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 70%, rgba(50, 100, 200, 0.2) 0%, transparent 40%);
+            filter: blur(60px);
+        }
+        
+        .nebula-2 {
+            background: radial-gradient(circle at 60% 20%, rgba(200, 50, 150, 0.2) 0%, transparent 45%);
+            filter: blur(40px);
+            animation: nebulaShift 20s ease-in-out infinite;
+        }
+        
+        @keyframes nebulaShift {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-20px, 10px) scale(1.1); }
+        }
+        
+        .star-field {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .bg-star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s ease-in-out infinite;
+        }
+        
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.2; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.2); }
+        }
+        
+        #ui-layer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .header {
+            position: absolute;
+            top: 20px;
+            left: 30px;
+            pointer-events: auto;
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 300;
+            letter-spacing: 0.2em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(102, 126, 234, 0.5);
+        }
+        
+        .header p {
+            color: #8888aa;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+        
+        #info-panel {
+            position: absolute;
+            right: -400px;
+            top: 0;
+            width: 350px;
+            height: 100%;
+            background: rgba(10, 10, 15, 0.95);
+            backdrop-filter: blur(20px);
+            border-left: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 30px;
+            pointer-events: auto;
+            transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto;
+            box-shadow: -10px 0 40px rgba(0, 0, 0, 0.8);
+        }
+        
+        #info-panel.active { right: 0; }
+        
+        .info-header {
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .info-domain {
+            font-size: 1.5rem;
+            color: #fff;
+            word-break: break-all;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+        }
+        
+        .info-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: rgba(102, 126, 234, 0.2);
+            border: 1px solid rgba(102, 126, 234, 0.5);
+            border-radius: 20px;
+            font-size: 0.75rem;
+            color: #a0a0ff;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        
+        .info-stats {
+            display: grid;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .stat-label { color: #666688; font-size: 0.85rem; }
+        .stat-value { color: #e0e0ff; font-size: 1.1rem; font-weight: 500; }
+        
+        .connections-list { margin-top: 20px; }
+        
+        .connections-list h3 {
+            color: #666688;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        
+        .connection-item {
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            border-left: 3px solid;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .connection-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+            transform: translateX(5px);
+        }
+        
+        .close-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            color: #888;
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .close-panel:hover {
+            background: rgba(255, 100, 100, 0.2);
+            border-color: rgba(255, 100, 100, 0.5);
+            color: #ff8888;
+            transform: rotate(90deg);
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            pointer-events: auto;
+            background: rgba(10, 10, 15, 0.8);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .legend h3 {
+            color: #8888aa;
+            font-size: 0.8rem;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            color: #a0a0cc;
+        }
+        
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            box-shadow: 0 0 10px currentColor;
+        }
+        
+        #constellation-svg {
+            width: 100vw;
+            height: 100vh;
+            cursor: grab;
+        }
+        
+        #constellation-svg:active { cursor: grabbing; }
+        
+        .constellation-line {
+            stroke: rgba(102, 126, 234, 0.3);
+            stroke-width: 1;
+            stroke-dasharray: 5,5;
+            animation: dashFlow 20s linear infinite;
+        }
+        
+        @keyframes dashFlow {
+            to { stroke-dashoffset: -100; }
+        }
+        
+        .node-label {
+            fill: #a0a0cc;
+            font-size: 12px;
+            font-weight: 300;
+            pointer-events: none;
+            text-shadow: 0 0 10px rgba(0,0,0,0.8);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .node-group:hover .node-label { opacity: 1; }
+        
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #667eea;
+            font-size: 1.2rem;
+            letter-spacing: 0.2em;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+    </style>
 </head>
 <body>
-  <canvas id="constellation-canvas"></canvas>
-  <script src="constellation.js"></script>
+    <div class="nebula nebula-1"></div>
+    <div class="nebula nebula-2"></div>
+    <div class="star-field" id="star-field"></div>
+    
+    <div id="ui-layer">
+        <div class="header">
+            <h1>◉ TRAIL</h1>
+            <p>Constellation Map // <span id="node-count">0</span> Nodes</p>
+        </div>
+        
+        <div class="legend">
+            <h3>Star Types</h3>
+            <div class="legend-item">
+                <div class="legend-dot" style="color: #ff6b6b; background: #ff6b6b;"></div>
+                <span>High Traffic (50+)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="color: #4ecdc4; background: #4ecdc4;"></div>
+                <span>Medium (10-49)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="color: #45b7d1; background: #45b7d1;"></div>
+                <span>Low (&lt;10)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="color: #96ceb4; background: #96ceb4;"></div>
+                <span>Recent (Today)</span>
+            </div>
+        </div>
+    </div>
+    
+    <div id="info-panel">
+        <button class="close-panel" onclick="closePanel()">×</button>
+        <div class="info-header">
+            <div class="info-domain" id="panel-domain">Select a Star</div>
+            <span class="info-badge" id="panel-category">Constellation Node</span>
+        </div>
+        <div class="info-stats">
+            <div class="stat-row">
+                <span class="stat-label">Total Visits</span>
+                <span class="stat-value" id="panel-visits">-</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">First Contact</span>
+                <span class="stat-value" id="panel-first">-</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Last Visit</span>
+                <span class="stat-value" id="panel-last">-</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Connections</span>
+                <span class="stat-value" id="panel-connections">-</span>
+            </div>
+        </div>
+        <div class="connections-list">
+            <h3>Linked Constellations</h3>
+            <div id="panel-links"></div>
+        </div>
+    </div>
+    
+    <div id="loading" class="loading">MAPPING COSMOS...</div>
+    <svg id="constellation-svg"></svg>
+
+    <script src="constellation.js"></script>
 </body>
 </html>

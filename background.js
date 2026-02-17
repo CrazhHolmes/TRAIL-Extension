@@ -334,3 +334,89 @@ chrome.runtime.onInstalled.addListener(() => {
 setInterval(purgeOldData, 24 * 60 * 60 * 1000);
 
 console.log('[TRAIL] THE GHOST is watching...');
+
+
+// ============================================
+// CONSTELLATION DATA PREPARATION
+// ============================================
+
+// Convert browsing history to constellation graph format
+async function updateConstellationData() {
+  try {
+    const db = await initDatabase();
+    const transaction = db.transaction([STORE_NAME], 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.getAll();
+    
+    request.onsuccess = () => {
+      const records = request.result;
+      
+      // Aggregate by domain
+      const domainMap = new Map();
+      
+      records.forEach(record => {
+        const domain = record.domain || extractDomain(record.url);
+        if (!domainMap.has(domain)) {
+          domainMap.set(domain, {
+            id: domain,
+            domain: domain,
+            visitCount: 0,
+            firstVisit: record.timestamp,
+            lastVisit: record.timestamp,
+            category: record.category || 'other'
+          });
+        }
+        
+        const node = domainMap.get(domain);
+        node.visitCount++;
+        node.lastVisit = Math.max(node.lastVisit, record.timestamp);
+        node.firstVisit = Math.min(node.firstVisit, record.timestamp);
+      });
+      
+      // Create nodes array
+      const nodes = Array.from(domainMap.values());
+      
+      // Create links based on temporal proximity (visited within 10 min)
+      const links = [];
+      const sortedRecords = [...records].sort((a, b) => a.timestamp - b.timestamp);
+      
+      for (let i = 0; i < sortedRecords.length - 1; i++) {
+        const current = sortedRecords[i];
+        const next = sortedRecords[i + 1];
+        const timeDiff = next.timestamp - current.timestamp;
+        
+        if (timeDiff < 10 * 60 * 1000) { // 10 minutes
+          const sourceDomain = current.domain || extractDomain(current.url);
+          const targetDomain = next.domain || extractDomain(next.url);
+          
+          if (sourceDomain !== targetDomain) {
+            links.push({
+              source: sourceDomain,
+              target: targetDomain
+            });
+          }
+        }
+      }
+      
+      // Save to storage for constellation visualization
+      chrome.storage.local.set({
+        trail_nodes: nodes,
+        trail_links: links
+      }, () => {
+        console.log('[TRAIL] Constellation data updated:', nodes.length, 'nodes,', links.length, 'links');
+      });
+    };
+  } catch (err) {
+    console.error('[TRAIL] Failed to update constellation data:', err);
+  }
+}
+
+// Update constellation data periodically
+setInterval(updateConstellationData, 60 * 1000); // Every minute
+
+// Also update when history changes
+chrome.history.onVisited.addListener(() => {
+  setTimeout(updateConstellationData, 1000); // Delay to let data be stored first
+});
+
+console.log('[TRAIL] Background script ready');

@@ -31,7 +31,7 @@
   
   "web_accessible_resources": [
     {
-      "resources": ["constellation.html"],
+      "resources": ["constellation.html", "constellation.js", "lib/d3.v7.min.js"],
       "matches": ["<all_urls>"]
     }
   ]
