@@ -2,7 +2,7 @@
 
 Transform your browsing history into an interactive constellation map.
 
-![TRAIL Screenshot](screenshot.png)
+![TRAIL Constellation Map](docs/constellation-v1.png)
 
 ## How to Use
 
@@ -13,11 +13,12 @@ Transform your browsing history into an interactive constellation map.
 
 ## Features
 
-- **Constellation Map** — Websites as nodes, connections as browsing flow
-- **Category Colors** — Tech (blue), Social (pink), News (orange), etc.
-- **Physics Simulation** — Force-directed graph, drag to rearrange
-- **Timeline** — 24h/7d/30d views
-- **Export** — PNG image or JSON data
+- 🌌 **Cosmic Interface** — Nebula backgrounds with 150+ animated stars
+- ⭐ **Constellation Map** — D3.js force-directed graph
+- 🔗 **Constellation Lines** — Connections between temporally-linked domains
+- 🎨 **Color-Coded Stars** — Green=recent, Red=high traffic, Teal=medium, Blue=low
+- 📊 **Info Panel** — Click any star to see domain stats & connections
+- 🔍 **Interactive** — Zoom, pan, drag to explore your browsing galaxy
 
 ## Privacy
 
