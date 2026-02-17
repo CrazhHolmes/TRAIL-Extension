@@ -8,7 +8,7 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      width: 340px;
+      width: 320px;
       font-family: 'Segoe UI', system-ui, sans-serif;
       background: #0a0a0f;
       color: #f1f5f9;
@@ -23,7 +23,6 @@
     .logo-icon {
       font-size: 24px;
       color: #6366f1;
-      text-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
     }
     .logo h1 {
       font-size: 20px;
@@ -45,9 +44,10 @@
       letter-spacing: 0.5px;
     }
     .status-value {
-      font-size: 14px;
+      font-size: 16px;
       color: #4ecca3;
       margin-top: 4px;
+      font-weight: 600;
     }
     .btn {
       display: block;
@@ -61,7 +61,6 @@
       font-weight: 600;
       cursor: pointer;
       text-align: center;
-      text-decoration: none;
       margin-bottom: 10px;
       transition: all 0.2s;
     }
@@ -69,11 +68,8 @@
       transform: translateY(-2px);
       box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
     }
-    .btn-secondary {
-      background: #12121a;
-      border: 1px solid #27272a;
-      font-size: 13px;
-      padding: 10px;
+    .btn:active {
+      transform: translateY(0);
     }
     .footer {
       margin-top: 15px;
@@ -85,23 +81,10 @@
       color: #6366f1;
       text-decoration: none;
     }
-    .shortcut {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: #12121a;
-      border: 1px solid #27272a;
-      border-radius: 6px;
-      padding: 8px 12px;
-      margin-bottom: 10px;
+    .error {
+      color: #ef4444;
       font-size: 12px;
-    }
-    .shortcut-key {
-      background: #27272a;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-family: monospace;
-      color: #888;
+      margin-top: 5px;
     }
   </style>
 </head>
@@ -112,49 +95,52 @@
   </div>
   
   <div class="status">
-    <div class="status-label">Nodes Mapped (24h)</div>
-    <div class="status-value" id="node-count">● Loading...</div>
+    <div class="status-label">Nodes Mapped</div>
+    <div class="status-value" id="node-count">...</div>
+    <div class="error" id="error-msg"></div>
   </div>
   
-  <button class="btn" id="open-constellation">
-    🌌 Open Constellation Map
-  </button>
-  
-  <div class="shortcut">
-    <span>Quick Open</span>
-    <span class="shortcut-key">Ctrl+Shift+T</span>
-  </div>
-  
-  <a href="https://github.com/CrazhHolmes/TRAIL-Extension" target="_blank" class="btn btn-secondary">
-    📖 Source Code
-  </a>
+  <button class="btn" id="open-map">🌌 Open Constellation Map</button>
   
   <div class="footer">
-    Built by <a href="https://github.com/CrazhHolmes" target="_blank">Wizardrytezch</a> • 
-    <a href="https://github.com/CrazhHolmes/404-smoke-test" target="_blank">🎮 404</a>
+    Built by <a href="https://github.com/CrazhHolmes" target="_blank">Wizardrytezch</a>
   </div>
   
   <script>
-    // Open constellation in new window
-    document.getElementById('open-constellation').addEventListener('click', () => {
-      chrome.windows.create({
-        url: chrome.runtime.getURL('constellation.html'),
-        type: 'popup',
-        width: 1200,
-        height: 800
-      });
-      window.close();
-    });
+    // Get node count from storage
+    async function loadStats() {
+      try {
+        const response = await chrome.runtime.sendMessage({ type: 'GET_HISTORY', timeRange: 'all' });
+        const countEl = document.getElementById('node-count');
+        const errorEl = document.getElementById('error-msg');
+        
+        if (response && response.success) {
+          countEl.textContent = `● ${response.data.length} websites`;
+          errorEl.textContent = '';
+        } else {
+          countEl.textContent = '● 0 websites';
+          errorEl.textContent = 'No data yet. Browse some sites!';
+        }
+      } catch (err) {
+        document.getElementById('node-count').textContent = '● --';
+        document.getElementById('error-msg').textContent = 'Error loading data';
+        console.error('TRAIL popup error:', err);
+      }
+    }
     
-    // Get node count
-    chrome.runtime.sendMessage({ type: 'GET_HISTORY', timeRange: '24h' }, (response) => {
-      const countEl = document.getElementById('node-count');
-      if (response && response.success) {
-        countEl.textContent = `● ${response.data.length} websites mapped`;
-      } else {
-        countEl.textContent = `● 8 websites mapped`;
+    // Open constellation in new tab
+    document.getElementById('open-map').addEventListener('click', async () => {
+      try {
+        await chrome.tabs.create({ url: chrome.runtime.getURL('constellation.html') });
+        window.close();
+      } catch (err) {
+        console.error('Failed to open constellation:', err);
+        document.getElementById('error-msg').textContent = 'Error opening map';
       }
     });
+    
+    // Load stats when popup opens
+    loadStats();
   </script>
 </body>
 </html>
