@@ -14,9 +14,9 @@ for (let i = 0; i < 150; i++) {
     starField.appendChild(star);
 }
 
-// Get favicon URL from Google's service
+// Get favicon URL from DuckDuckGo (transparent PNGs, better for dark theme)
 function getFaviconUrl(domain) {
-    return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+    return `https://icons.duckduckgo.com/ip3/${domain}.ico`;
 }
 
 function getNodeColor(visits, lastVisit) {
@@ -141,39 +141,43 @@ function renderConstellation(data) {
         .attr('stroke', d => d.color)
         .attr('stroke-width', 2);
     
-    // Add favicon image (clipped to circle)
+    // Add dark background behind favicon (helps with white backgrounds)
+    nodeGroup.append('circle')
+        .attr('r', d => d.radius - 2)
+        .attr('fill', '#0a0a0f')
+        .attr('stroke', 'none');
+    
+    // Add favicon image
     nodeGroup.each(function(d) {
         const node = d3.select(this);
-        const size = d.radius * 2;
+        const size = d.radius * 2 - 4;
         
-        // Create pattern for circular clipping
-        const patternId = `pattern-${d.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
+        // Create clip path for circular favicon
+        const clipId = `clip-${d.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
         
-        // Define pattern
         svg.append('defs')
-            .append('pattern')
-            .attr('id', patternId)
-            .attr('width', 1)
-            .attr('height', 1)
-            .append('image')
+            .append('clipPath')
+            .attr('id', clipId)
+            .append('circle')
+            .attr('r', d.radius - 2);
+        
+        // Add favicon image with clip and filters
+        const img = node.append('image')
             .attr('href', d.faviconUrl)
             .attr('width', size)
             .attr('height', size)
-            .attr('x', -d.radius)
-            .attr('y', -d.radius)
-            .on('error', function() {
-                // Fallback: hide image, show colored circle instead
-                d3.select(this).style('display', 'none');
-                node.append('circle')
-                    .attr('r', d.radius - 2)
-                    .attr('fill', d.color);
-            });
+            .attr('x', -(d.radius - 2))
+            .attr('y', -(d.radius - 2))
+            .attr('clip-path', `url(#${clipId})`)
+            .style('filter', 'contrast(1.1) brightness(1.05)');
         
-        // Circle filled with favicon pattern
-        node.append('circle')
-            .attr('r', d.radius - 2)
-            .attr('fill', `url(#${patternId})`)
-            .attr('stroke', 'none');
+        // Error fallback
+        img.on('error', function() {
+            d3.select(this).style('display', 'none');
+            node.append('circle')
+                .attr('r', d.radius - 4)
+                .attr('fill', d.color);
+        });
     });
     
     // Add domain label below favicon
