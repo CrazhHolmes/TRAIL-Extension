@@ -1,32 +1,406 @@
+<!-- TRAIL — Cosmic Control Center -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TRAIL Control Center</title>
   <style>
-    body { 
-      width: 280px; 
-      padding: 16px; 
-      font-family: sans-serif;
-      background: #1a1a2e;
-      color: white;
-      margin: 0;
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      width: 380px;
+      min-height: 520px;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(ellipse at 30% 20%, #1a1a2e 0%, #0a0a0f 50%, #000000 100%);
+      color: #e0e0ff;
+      overflow: hidden;
+      position: relative;
     }
-    h1 { margin: 0 0 12px 0; font-size: 16px; color: #6366f1; }
-    button { 
-      width: 100%; 
-      padding: 12px; 
-      background: #6366f1; 
-      color: white; 
-      border: none; 
-      border-radius: 6px; 
+    
+    /* Animated nebula background */
+    .nebula-bg {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+    
+    .nebula-1 {
+      position: absolute;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at 30% 30%, rgba(102, 126, 234, 0.15) 0%, transparent 50%),
+                  radial-gradient(circle at 70% 70%, rgba(118, 75, 162, 0.1) 0%, transparent 40%);
+      animation: nebulaShift 20s ease-in-out infinite;
+    }
+    
+    @keyframes nebulaShift {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(-5%, 5%) scale(1.1); }
+    }
+    
+    /* Twinkling stars */
+    .stars {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+    
+    .star {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: white;
+      border-radius: 50%;
+      animation: twinkle 3s ease-in-out infinite;
+    }
+    
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.2; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.2); }
+    }
+    
+    /* Glassmorphism container */
+    .container {
+      position: relative;
+      z-index: 10;
+      padding: 24px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* Header with pulsing status */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+      box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(1.1); }
+    }
+    
+    .logo-text {
+      font-size: 28px;
+      font-weight: 300;
+      letter-spacing: 3px;
+      background: linear-gradient(135deg, #667eea 0%, #a78bfa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .status-text {
+      font-size: 11px;
+      color: #667eea;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-left: auto;
+    }
+    
+    /* Stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    
+    .stat-card {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(102, 126, 234, 0.2);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover {
+      background: rgba(102, 126, 234, 0.1);
+      border-color: rgba(102, 126, 234, 0.4);
+      transform: translateY(-2px);
+    }
+    
+    .stat-value {
+      font-size: 32px;
+      font-weight: 600;
+      color: #fff;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    
+    .stat-label {
+      font-size: 11px;
+      color: #8888aa;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    /* Top domain card */
+    .top-domain {
+      background: rgba(102, 126, 234, 0.1);
+      border: 1px solid rgba(102, 126, 234, 0.3);
+    }
+    
+    .domain-favicon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      background: #fff;
+    }
+    
+    /* Recent stars section */
+    .recent-section {
+      margin-bottom: 20px;
+    }
+    
+    .section-title {
+      font-size: 12px;
+      color: #8888aa;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .recent-stars {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(102, 126, 234, 0.3) transparent;
+    }
+    
+    .recent-stars::-webkit-scrollbar {
+      height: 4px;
+    }
+    
+    .recent-stars::-webkit-scrollbar-thumb {
+      background: rgba(102, 126, 234, 0.3);
+      border-radius: 2px;
+    }
+    
+    .recent-item {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
       cursor: pointer;
-      font-size: 14px;
+      transition: all 0.2s ease;
+      min-width: 70px;
     }
+    
+    .recent-item:hover {
+      background: rgba(102, 126, 234, 0.15);
+      border-color: rgba(102, 126, 234, 0.4);
+      transform: scale(1.05);
+    }
+    
+    .recent-favicon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: #fff;
+    }
+    
+    .recent-domain {
+      font-size: 10px;
+      color: #a0a0cc;
+      max-width: 60px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    /* Main action button */
+    .action-button {
+      width: 100%;
+      padding: 18px;
+      margin-top: auto;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      border-radius: 14px;
+      color: white;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .action-button::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transform: translateX(-100%);
+      transition: transform 0.5s;
+    }
+    
+    .action-button:hover::before {
+      transform: translateX(100%);
+    }
+    
+    .action-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 30px rgba(102, 126, 234, 0.5);
+    }
+    
+    .action-button:active {
+      transform: translateY(0);
+    }
+    
+    .button-icon {
+      font-size: 18px;
+    }
+    
+    /* Footer */
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .version {
+      font-size: 11px;
+      color: #555577;
+    }
+    
+    .update-time {
+      font-size: 11px;
+      color: #667eea;
+    }
+    
+    .settings-icon {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      opacity: 0.5;
+      transition: opacity 0.2s;
+    }
+    
+    .settings-icon:hover {
+      opacity: 1;
+    }
+    
+    /* Entry animation */
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .container > * {
+      animation: slideIn 0.4s ease-out forwards;
+    }
+    
+    .container > *:nth-child(1) { animation-delay: 0.05s; }
+    .container > *:nth-child(2) { animation-delay: 0.1s; }
+    .container > *:nth-child(3) { animation-delay: 0.15s; }
+    .container > *:nth-child(4) { animation-delay: 0.2s; }
+    .container > *:nth-child(5) { animation-delay: 0.25s; }
   </style>
 </head>
 <body>
-  <h1>◉ TRAIL</h1>
-  <button id="open-btn">Open Constellation Map</button>
+  <div class="nebula-bg">
+    <div class="nebula-1"></div>
+  </div>
+  
+  <div class="stars" id="stars"></div>
+  
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="status-dot"></div>
+      <span class="logo-text">◉ TRAIL</span>
+      <span class="status-text">Cosmos Active</span>
+    </div>
+    
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-stars">-</div>
+        <div class="stat-label">Stars</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-links">-</div>
+        <div class="stat-label">Links</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-today">-</div>
+        <div class="stat-label">Today</div>
+      </div>
+      <div class="stat-card top-domain" id="top-domain-card">
+        <img class="domain-favicon" id="top-favicon" src="">
+        <div class="stat-label" id="top-domain">-</div>
+      </div>
+    </div>
+    
+    <!-- Recent Stars -->
+    <div class="recent-section">
+      <div class="section-title">
+        <span>✦</span>
+        <span>Recent Stars</span>
+      </div>
+      <div class="recent-stars" id="recent-stars">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+    
+    <!-- Main Action Button -->
+    <button class="action-button" id="open-map">
+      <span class="button-icon">🌌</span>
+      <span>Open Constellation Map</span>
+    </button>
+    
+    <!-- Footer -->
+    <div class="footer">
+      <span class="version">v1.3.0</span>
+      <span class="update-time" id="update-time">Updated just now</span>
+      <svg class="settings-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 1v6m0 6v6m4.22-10.22l4.24-4.24M6.34 6.34L2.1 2.1m17.8 17.8l-4.24-4.24M6.34 17.66l-4.24 4.24M23 12h-6m-6 0H1m20.24-4.24l-4.24 4.24M6.34 6.34l-4.24-4.24"/>
+      </svg>
+    </div>
+  </div>
+  
   <script src="popup.js"></script>
 </body>
 </html>
