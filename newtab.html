@@ -1,0 +1,121 @@
+<!-- TRAIL v1.0 | Built by Wizardrytezch | github.com/CrazhHolmes | Patent Pending -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TRAIL - Your Digital Constellation</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://unpkg.com/compromise@14.10.0/builds/compromise.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header class="trail-header">
+      <div class="logo">
+        <span class="logo-icon">◉</span>
+        <h1>TRAIL</h1>
+      </div>
+      <div class="header-controls">
+        <button id="replay-btn" class="control-btn" title="Replay Session">
+          <span>▶</span> Replay
+        </button>
+        <button id="export-png-btn" class="control-btn" title="Export as PNG">
+          <span>📷</span> Share
+        </button>
+        <button id="export-json-btn" class="control-btn" title="Export JSON">
+          <span>💾</span> Export
+        </button>
+        <button id="clear-btn" class="control-btn danger" title="Clear Data">
+          <span>🗑</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Visualization Area -->
+    <main class="trail-main">
+      <canvas id="constellation-canvas"></canvas>
+      
+      <!-- Loading Overlay -->
+      <div id="loading-overlay" class="overlay">
+        <div class="loading-spinner"></div>
+        <p>Mapping your digital trail...</p>
+      </div>
+      
+      <!-- Empty State -->
+      <div id="empty-state" class="overlay hidden">
+        <div class="empty-content">
+          <span class="empty-icon">🌌</span>
+          <h2>Your constellation is forming...</h2>
+          <p>Browse the web and watch your trail take shape.</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Timeline Controls -->
+    <footer class="trail-footer">
+      <div class="timeline-container">
+        <div class="timeline-controls">
+          <button id="play-pause-btn" class="timeline-btn">
+            <span id="play-icon">▶</span>
+            <span id="pause-icon" class="hidden">⏸</span>
+          </button>
+          <span class="time-display" id="current-time">Now</span>
+        </div>
+        
+        <div class="timeline-slider-container">
+          <input 
+            type="range" 
+            id="timeline-slider" 
+            min="0" 
+            max="100" 
+            value="100"
+            class="timeline-slider"
+          >
+          <div class="timeline-labels">
+            <span>Start</span>
+            <span id="timeline-mid">Middle</span>
+            <span>Now</span>
+          </div>
+        </div>
+        
+        <div class="time-range-controls">
+          <button class="range-btn active" data-range="24h">24h</button>
+          <button class="range-btn" data-range="7d">7d</button>
+          <button class="range-btn" data-range="30d">30d</button>
+          <button class="range-btn" data-range="all">All</button>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Info Panel (slides in) -->
+    <aside id="info-panel" class="info-panel hidden">
+      <button id="close-panel" class="close-btn">×</button>
+      <div class="panel-content">
+        <h3 id="panel-title">Node Details</h3>
+        <div id="panel-body">
+          <p class="panel-url" id="panel-url"></p>
+          <p class="panel-time" id="panel-time"></p>
+          <div class="panel-category" id="panel-category"></div>
+          <div class="panel-entities" id="panel-entities"></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Journey Summary Toast -->
+    <div id="journey-toast" class="journey-toast hidden">
+      <span id="journey-text"></span>
+    </div>
+
+    <!-- Attribution Footer -->
+    <div class="attribution">
+      <p>Built by <a href="https://github.com/CrazhHolmes" target="_blank">Wizardrytezch</a> | 
+      <a href="https://github.com/CrazhHolmes" target="_blank">⭐ Star on GitHub</a> | 
+      <a href="https://github.com/CrazhHolmes/404-smoke-test" target="_blank">🎮 404 Smoke Test</a> | 
+      Patent Pending</p>
+    </div>
+  </div>
+
+  <script src="newtab.js"></script>
+</body>
+</html>
