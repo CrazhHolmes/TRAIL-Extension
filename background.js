@@ -80,7 +80,14 @@ async function storeBrowsingData(data) {
     };
     
     const request = store.add(record);
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      // Update counter for popup display
+      chrome.storage.local.get('trail_count', (data) => {
+        const newCount = (data.trail_count || 0) + 1;
+        chrome.storage.local.set({ trail_count: newCount });
+      });
+      resolve(request.result);
+    };
     request.onerror = () => reject(request.error);
   });
 }

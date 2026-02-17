@@ -1,56 +1,39 @@
-<!-- TRAIL — Personal Browsing Visualizer -->
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TRAIL</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      width: 320px;
-      font-family: 'Segoe UI', system-ui, sans-serif;
+      width: 300px;
+      padding: 20px;
+      font-family: system-ui, -apple-system, sans-serif;
       background: #0a0a0f;
       color: #f1f5f9;
-      padding: 20px;
+      margin: 0;
     }
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 15px;
-    }
-    .logo-icon {
-      font-size: 24px;
+    h1 {
+      margin: 0 0 15px 0;
+      font-size: 18px;
       color: #6366f1;
     }
-    .logo h1 {
-      font-size: 20px;
-      background: linear-gradient(135deg, #6366f1, #8b5cf6);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .status {
+    .count {
       background: #12121a;
-      border: 1px solid #27272a;
-      border-radius: 8px;
       padding: 12px;
+      border-radius: 8px;
       margin-bottom: 15px;
+      border: 1px solid #27272a;
     }
-    .status-label {
+    .count-label {
       font-size: 11px;
       color: #64748b;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
     }
-    .status-value {
-      font-size: 16px;
+    .count-value {
+      font-size: 20px;
       color: #4ecca3;
-      margin-top: 4px;
-      font-weight: 600;
+      font-weight: bold;
     }
-    .btn {
-      display: block;
+    button {
       width: 100%;
       padding: 14px;
       background: linear-gradient(135deg, #6366f1, #8b5cf6);
@@ -60,87 +43,38 @@
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
-      text-align: center;
-      margin-bottom: 10px;
-      transition: all 0.2s;
     }
-    .btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
-    }
-    .btn:active {
-      transform: translateY(0);
-    }
-    .footer {
-      margin-top: 15px;
-      font-size: 11px;
-      color: #64748b;
-      text-align: center;
-    }
-    .footer a {
-      color: #6366f1;
-      text-decoration: none;
-    }
-    .error {
-      color: #ef4444;
-      font-size: 12px;
-      margin-top: 5px;
+    button:hover {
+      opacity: 0.9;
     }
   </style>
 </head>
 <body>
-  <div class="logo">
-    <span class="logo-icon">◉</span>
-    <h1>TRAIL</h1>
+  <h1>◉ TRAIL</h1>
+  
+  <div class="count">
+    <div class="count-label">Websites Mapped</div>
+    <div class="count-value" id="count">-</div>
   </div>
   
-  <div class="status">
-    <div class="status-label">Nodes Mapped</div>
-    <div class="status-value" id="node-count">...</div>
-    <div class="error" id="error-msg"></div>
-  </div>
-  
-  <button class="btn" id="open-map">🌌 Open Constellation Map</button>
-  
-  <div class="footer">
-    Built by <a href="https://github.com/CrazhHolmes" target="_blank">Wizardrytezch</a>
-  </div>
-  
+  <button id="btn">Open Constellation Map</button>
+
   <script>
-    // Get node count from storage
-    async function loadStats() {
-      try {
-        const response = await chrome.runtime.sendMessage({ type: 'GET_HISTORY', timeRange: 'all' });
-        const countEl = document.getElementById('node-count');
-        const errorEl = document.getElementById('error-msg');
-        
-        if (response && response.success) {
-          countEl.textContent = `● ${response.data.length} websites`;
-          errorEl.textContent = '';
-        } else {
-          countEl.textContent = '● 0 websites';
-          errorEl.textContent = 'No data yet. Browse some sites!';
-        }
-      } catch (err) {
-        document.getElementById('node-count').textContent = '● --';
-        document.getElementById('error-msg').textContent = 'Error loading data';
-        console.error('TRAIL popup error:', err);
-      }
-    }
-    
-    // Open constellation in new tab
-    document.getElementById('open-map').addEventListener('click', async () => {
-      try {
-        await chrome.tabs.create({ url: chrome.runtime.getURL('constellation.html') });
-        window.close();
-      } catch (err) {
-        console.error('Failed to open constellation:', err);
-        document.getElementById('error-msg').textContent = 'Error opening map';
-      }
+    // Simple synchronous approach
+    document.getElementById('btn').addEventListener('click', function() {
+      chrome.tabs.create({url: 'constellation.html'});
+      window.close();
     });
     
-    // Load stats when popup opens
-    loadStats();
+    // Try to get count
+    try {
+      chrome.storage.local.get('trail_count', function(data) {
+        var count = data.trail_count || 0;
+        document.getElementById('count').textContent = count;
+      });
+    } catch(e) {
+      document.getElementById('count').textContent = '?';
+    }
   </script>
 </body>
 </html>
