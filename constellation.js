@@ -19,24 +19,58 @@ let currentFilter = 'all';
 document.addEventListener('DOMContentLoaded', () => {
   console.log('[TRAIL] DOM ready, initializing...');
   
-  // Create background stars
-  const starField = document.getElementById('star-field');
-  if (starField) {
-    for (let i = 0; i < 150; i++) {
-      const star = document.createElement('div');
-      star.className = 'bg-star';
-      star.style.left = Math.random() * 100 + '%';
-      star.style.top = Math.random() * 100 + '%';
-      star.style.width = Math.random() * 3 + 'px';
-      star.style.height = star.style.width;
-      star.style.animationDelay = Math.random() * 3 + 's';
-      starField.appendChild(star);
-    }
+  // Check if D3 is loaded
+  if (typeof d3 === 'undefined') {
+    console.error('[TRAIL] D3 not loaded! Checking path...');
+    showLoadingError('D3 library not loaded. Please refresh.');
+    return;
   }
+  console.log('[TRAIL] D3 loaded:', d3.version);
   
-  // Load constellation data
+  // Create background stars
+  createStarField();
+  
+  // Start loading with timeout protection
   loadConstellationData();
+  
+  // Failsafe: Force demo data after 5 seconds if still loading
+  setTimeout(() => {
+    const loading = document.getElementById('loading');
+    if (loading && loading.style.display !== 'none') {
+      console.warn('[TRAIL] Loading timeout - forcing demo data');
+      document.getElementById('loading').style.display = 'none';
+      const demoData = getDemoData();
+      document.getElementById('node-count').textContent = demoData.nodes.length;
+      renderConstellation(demoData);
+      setupTimeFilters();
+      setupSearch();
+    }
+  }, 5000);
 });
+
+function createStarField() {
+  const starField = document.getElementById('star-field');
+  if (!starField) return;
+  
+  for (let i = 0; i < 150; i++) {
+    const star = document.createElement('div');
+    star.className = 'bg-star';
+    star.style.left = Math.random() * 100 + '%';
+    star.style.top = Math.random() * 100 + '%';
+    star.style.width = Math.random() * 3 + 'px';
+    star.style.height = star.style.width;
+    star.style.animationDelay = Math.random() * 3 + 's';
+    starField.appendChild(star);
+  }
+}
+
+function showLoadingError(message) {
+  const loading = document.getElementById('loading');
+  if (loading) {
+    loading.textContent = 'ERROR: ' + message;
+    loading.style.color = '#ff6b6b';
+  }
+}
 
 // Get favicon URL from DuckDuckGo (transparent PNGs)
 function getFaviconUrl(domain) {
@@ -84,68 +118,98 @@ function filterNodesByTime(nodes, range) {
 async function loadConstellationData() {
   try {
     console.log('[TRAIL] Loading constellation data...');
-    let data;
+    let data = null;
     
+    // Try to load from Chrome storage
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      const result = await chrome.storage.local.get(['trail_nodes', 'trail_links']);
-      console.log('[TRAIL] Storage result:', result);
-      data = { 
-        nodes: result.trail_nodes || [], 
-        links: result.trail_links || [] 
-      };
+      try {
+        const result = await Promise.race([
+          chrome.storage.local.get(['trail_nodes', 'trail_links']),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Storage timeout')), 3000)
+          )
+        ]);
+        
+        console.log('[TRAIL] Storage result:', result);
+        
+        if (result && result.trail_nodes && result.trail_nodes.length > 0) {
+          data = { 
+            nodes: result.trail_nodes || [], 
+            links: result.trail_links || [] 
+          };
+        }
+      } catch (storageErr) {
+        console.warn('[TRAIL] Storage access failed:', storageErr.message);
+      }
     } else {
+      console.log('[TRAIL] Chrome storage not available');
+    }
+    
+    // Use demo data if no storage data
+    if (!data || data.nodes.length === 0) {
       console.log('[TRAIL] Using demo data');
       data = getDemoData();
     }
     
+    console.log(`[TRAIL] Loaded ${data.nodes.length} nodes, ${data.links.length} links`);
+    
+    // Hide loading
     const loadingEl = document.getElementById('loading');
     if (loadingEl) loadingEl.style.display = 'none';
     
-    console.log(`[TRAIL] Loaded ${data.nodes.length} nodes, ${data.links.length} links`);
-    
-    if (!data.nodes || data.nodes.length === 0) {
-      const svg = d3.select('#constellation-svg');
-      svg.append('text')
-        .attr('x', window.innerWidth / 2)
-        .attr('y', window.innerHeight / 2)
-        .attr('text-anchor', 'middle')
-        .style('fill', '#8888aa')
-        .style('font-size', '18px')
-        .text('No data yet. Browse to map the cosmos.');
-      return;
-    }
-    
-    // Store full data for filtering
-    window.fullConstellationData = data;
-    
+    // Update node count
     const nodeCountEl = document.getElementById('node-count');
     if (nodeCountEl) nodeCountEl.textContent = data.nodes.length;
     
+    // Store and render
+    window.fullConstellationData = data;
     renderConstellation(data);
     setupTimeFilters();
     setupSearch();
     
+    console.log('[TRAIL] Constellation initialized successfully');
+    
   } catch (err) {
-    console.error('[TRAIL] Error loading data:', err);
+    console.error('[TRAIL] Critical error:', err);
+    
+    // Emergency fallback
     const loadingEl = document.getElementById('loading');
-    if (loadingEl) loadingEl.textContent = 'ERROR LOADING COSMOS';
+    if (loadingEl) loadingEl.style.display = 'none';
+    
+    const demoData = getDemoData();
+    const nodeCountEl = document.getElementById('node-count');
+    if (nodeCountEl) nodeCountEl.textContent = demoData.nodes.length;
+    
+    window.fullConstellationData = demoData;
+    renderConstellation(demoData);
+    setupTimeFilters();
+    setupSearch();
   }
 }
 
 function getDemoData() {
+  console.log('[TRAIL] Generating demo data');
   return {
     nodes: [
       { id: 'github.com', domain: 'github.com', visitCount: 45, lastVisit: Date.now(), firstVisit: Date.now() - 7*24*60*60*1000, category: 'tech' },
       { id: 'stackoverflow.com', domain: 'stackoverflow.com', visitCount: 32, lastVisit: Date.now() - 3600000, firstVisit: Date.now() - 5*24*60*60*1000, category: 'tech' },
       { id: 'google.com', domain: 'google.com', visitCount: 120, lastVisit: Date.now() - 60000, firstVisit: Date.now() - 30*24*60*60*1000, category: 'tech' },
       { id: 'reddit.com', domain: 'reddit.com', visitCount: 25, lastVisit: Date.now() - 1800000, firstVisit: Date.now() - 10*24*60*60*1000, category: 'social' },
-      { id: 'youtube.com', domain: 'youtube.com', visitCount: 60, lastVisit: Date.now() - 900000, firstVisit: Date.now() - 14*24*60*60*1000, category: 'entertainment' }
+      { id: 'youtube.com', domain: 'youtube.com', visitCount: 60, lastVisit: Date.now() - 900000, firstVisit: Date.now() - 14*24*60*60*1000, category: 'entertainment' },
+      { id: 'twitter.com', domain: 'twitter.com', visitCount: 15, lastVisit: Date.now() - 7200000, firstVisit: Date.now() - 3*24*60*60*1000, category: 'social' },
+      { id: 'netflix.com', domain: 'netflix.com', visitCount: 8, lastVisit: Date.now() - 86400000, firstVisit: Date.now() - 21*24*60*60*1000, category: 'entertainment' },
+      { id: 'amazon.com', domain: 'amazon.com', visitCount: 12, lastVisit: Date.now() - 43200000, firstVisit: Date.now() - 14*24*60*60*1000, category: 'shopping' },
+      { id: 'docs.google.com', domain: 'docs.google.com', visitCount: 28, lastVisit: Date.now() - 14400000, firstVisit: Date.now() - 10*24*60*60*1000, category: 'tech' }
     ],
     links: [
       { source: 'github.com', target: 'stackoverflow.com' },
       { source: 'google.com', target: 'github.com' },
       { source: 'reddit.com', target: 'youtube.com' },
-      { source: 'google.com', target: 'reddit.com' }
+      { source: 'google.com', target: 'reddit.com' },
+      { source: 'twitter.com', target: 'reddit.com' },
+      { source: 'youtube.com', target: 'netflix.com' },
+      { source: 'google.com', target: 'amazon.com' },
+      { source: 'docs.google.com', target: 'github.com' }
     ]
   };
 }
@@ -184,20 +248,17 @@ function renderConstellation(data) {
     });
   svg.call(zoom);
   
-  // CRITICAL: Prepare nodes with initial positions and ensure ID exists
+  // Prepare nodes with initial positions
   const nodes = data.nodes.map((d, i) => {
-    // Ensure node has an ID
     const nodeId = d.id || d.domain || `node-${i}`;
-    
-    // Initialize positions in a circle around center if not set
-    const angle = (i / data.nodes.length) * 2 * Math.PI;
+    const angle = (i / Math.max(data.nodes.length, 1)) * 2 * Math.PI;
     const radius = Math.min(width, height) * 0.25;
     
     return {
       ...d,
       id: nodeId,
-      x: d.x || centerX + Math.cos(angle) * radius,
-      y: d.y || centerY + Math.sin(angle) * radius,
+      x: typeof d.x === 'number' ? d.x : centerX + Math.cos(angle) * radius,
+      y: typeof d.y === 'number' ? d.y : centerY + Math.sin(angle) * radius,
       vx: 0,
       vy: 0,
       color: getNodeColor(d.visitCount || 1, d.lastVisit || 0, d.category),
@@ -206,10 +267,10 @@ function renderConstellation(data) {
     };
   });
   
-  // CRITICAL: Prepare links with proper node references
+  // Prepare links
   const links = data.links.map((d, i) => {
-    const sourceId = typeof d.source === 'string' ? d.source : (d.source.id || d.source);
-    const targetId = typeof d.target === 'string' ? d.target : (d.target.id || d.target);
+    const sourceId = typeof d.source === 'string' ? d.source : (d.source?.id || d.source);
+    const targetId = typeof d.target === 'string' ? d.target : (d.target?.id || d.target);
     
     const sourceNode = nodes.find(n => n.id === sourceId || n.domain === sourceId);
     const targetNode = nodes.find(n => n.id === targetId || n.domain === targetId);
@@ -223,25 +284,21 @@ function renderConstellation(data) {
       target: targetNode || targetId,
       strength: d.strength || 1
     };
-  }).filter(l => {
-    const hasSource = typeof l.source === 'object';
-    const hasTarget = typeof l.target === 'object';
-    return hasSource && hasTarget;
-  });
+  }).filter(l => typeof l.source === 'object' && typeof l.target === 'object');
   
   console.log(`[TRAIL] Prepared ${nodes.length} nodes, ${links.length} valid links`);
   
-  // CRITICAL: Create simulation with proper forces
+  // Create simulation
   const simulation = d3.forceSimulation(nodes)
     .force('link', d3.forceLink(links).id(d => d.id).distance(120))
     .force('charge', d3.forceManyBody().strength(-500))
     .force('center', d3.forceCenter(centerX, centerY))
     .force('collision', d3.forceCollide().radius(d => d.radius + 10))
-    .alpha(1)           // Start with high energy
-    .alphaDecay(0.02)   // Slow decay for smoother animation
-    .alphaMin(0.001);   // Keep running until settled
+    .alpha(1)
+    .alphaDecay(0.02)
+    .alphaMin(0.001);
   
-  // Draw constellation lines
+  // Draw links
   const link = g.append('g')
     .attr('class', 'links')
     .selectAll('line')
@@ -280,7 +337,7 @@ function renderConstellation(data) {
   
   nodeGroup.call(dragBehavior);
   
-  // Add glow effect (outer colored ring)
+  // Glow effect
   nodeGroup.append('circle')
     .attr('class', 'node-glow')
     .attr('r', d => d.radius + 4)
@@ -290,18 +347,17 @@ function renderConstellation(data) {
     .attr('opacity', 0.6)
     .style('filter', d => `drop-shadow(0 0 ${d.radius/2}px ${d.color})`);
   
-  // Add dark background circle
+  // Background circle
   nodeGroup.append('circle')
     .attr('class', 'node-bg')
     .attr('r', d => d.radius - 2)
     .attr('fill', '#0a0a0f')
     .attr('stroke', 'none');
   
-  // Add favicon image
+  // Favicon image
   nodeGroup.each(function(d) {
     const node = d3.select(this);
     const size = d.radius * 2 - 4;
-    
     const clipId = `clip-${String(d.id).replace(/[^a-zA-Z0-9]/g, '-')}`;
     
     defs.append('clipPath')
@@ -319,7 +375,6 @@ function renderConstellation(data) {
       .attr('clip-path', `url(#${clipId})`)
       .style('filter', 'contrast(1.1) brightness(1.05)');
     
-    // Fallback if favicon fails to load
     img.on('error', function() {
       d3.select(this).style('display', 'none');
       node.append('circle')
@@ -329,7 +384,7 @@ function renderConstellation(data) {
     });
   });
   
-  // Add visit count badge
+  // Visit count badge
   nodeGroup.append('circle')
     .attr('class', 'visit-badge-bg')
     .attr('cx', d => d.radius * 0.6)
@@ -350,7 +405,7 @@ function renderConstellation(data) {
     .style('pointer-events', 'none')
     .text(d => Math.min(99, d.visitCount || 1));
   
-  // Add domain label (hidden by default)
+  // Domain label
   nodeGroup.append('text')
     .attr('class', 'node-label')
     .attr('dy', d => d.radius + 20)
@@ -363,24 +418,18 @@ function renderConstellation(data) {
     .style('pointer-events', 'none')
     .text(d => d.domain.length > 22 ? d.domain.substring(0, 20) + '...' : d.domain);
   
-  // Hover interactions
+  // Interactions
   nodeGroup
     .on('mouseenter', function(event, d) {
-      d3.select(this)
-        .transition().duration(200)
+      d3.select(this).transition().duration(200)
         .attr('transform', `translate(${d.x},${d.y}) scale(1.15)`);
-      
-      d3.select(this).select('.node-label')
-        .transition().duration(200)
+      d3.select(this).select('.node-label').transition().duration(200)
         .style('opacity', 1);
     })
     .on('mouseleave', function(event, d) {
-      d3.select(this)
-        .transition().duration(200)
+      d3.select(this).transition().duration(200)
         .attr('transform', `translate(${d.x},${d.y}) scale(1)`);
-      
-      d3.select(this).select('.node-label')
-        .transition().duration(200)
+      d3.select(this).select('.node-label').transition().duration(200)
         .style('opacity', 0);
     })
     .on('click', (event, d) => {
@@ -388,7 +437,7 @@ function renderConstellation(data) {
       showNodeInfo(d, nodes, links);
     });
   
-  // CRITICAL: Update positions on every tick
+  // Update positions
   simulation.on('tick', () => {
     link
       .attr('x1', d => d.source.x)
@@ -399,17 +448,13 @@ function renderConstellation(data) {
     nodeGroup.attr('transform', d => `translate(${d.x},${d.y})`);
   });
   
-  // Close panel on background click
   svg.on('click', () => closePanel());
   
-  // Store simulation for external access
   window.constellationSimulation = simulation;
   window.constellationNodes = nodes;
   window.constellationLinks = links;
   
   console.log('[TRAIL] Constellation rendered successfully');
-  
-  // Heat up simulation initially
   simulation.alpha(1).restart();
 }
 
@@ -575,3 +620,14 @@ function formatDate(timestamp) {
   if (diff < 604800000) return Math.floor(diff/86400000) + 'd ago';
   return date.toLocaleDateString();
 }
+
+// Expose emergency functions to console
+window.forceLoadDemo = function() {
+  console.log('[TRAIL] Force loading demo data');
+  document.getElementById('loading').style.display = 'none';
+  const demoData = getDemoData();
+  document.getElementById('node-count').textContent = demoData.nodes.length;
+  renderConstellation(demoData);
+  setupTimeFilters();
+  setupSearch();
+};
