@@ -1,3 +1,6 @@
+// TRAIL Constellation Visualization with Favicon Stars
+// Built by Wizardrytezch | github.com/CrazhHolmes
+
 // Background stars
 const starField = document.getElementById('star-field');
 for (let i = 0; i < 150; i++) {
@@ -11,17 +14,23 @@ for (let i = 0; i < 150; i++) {
     starField.appendChild(star);
 }
 
+// Get favicon URL from Google's service
+function getFaviconUrl(domain) {
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+}
+
 function getNodeColor(visits, lastVisit) {
     const now = Date.now();
     const dayAgo = now - (24 * 60 * 60 * 1000);
-    if (lastVisit > dayAgo) return '#96ceb4';
-    if (visits >= 50) return '#ff6b6b';
-    if (visits >= 10) return '#4ecdc4';
-    return '#45b7d1';
+    if (lastVisit > dayAgo) return '#96ceb4';  // Green - recent
+    if (visits >= 50) return '#ff6b6b';        // Red - high traffic
+    if (visits >= 10) return '#4ecdc4';        // Teal - medium
+    return '#45b7d1';                          // Blue - low
 }
 
+// Larger minimum size for better favicon visibility
 function getNodeSize(visits) {
-    return Math.max(8, Math.min(30, 8 + Math.sqrt(visits || 1) * 3));
+    return Math.max(20, Math.min(40, 20 + Math.sqrt(visits || 1) * 4));
 }
 
 async function loadConstellationData() {
@@ -81,10 +90,12 @@ function renderConstellation(data) {
     });
     svg.call(zoom);
     
+    // Prepare nodes with favicon URLs
     const nodes = data.nodes.map(d => ({
         ...d,
         color: getNodeColor(d.visitCount || 1, d.lastVisit || 0),
-        radius: getNodeSize(d.visitCount || 1)
+        radius: getNodeSize(d.visitCount || 1),
+        faviconUrl: getFaviconUrl(d.domain)
     }));
     
     const links = data.links.map(d => ({ source: d.source, target: d.target }));
@@ -93,11 +104,13 @@ function renderConstellation(data) {
         .force('link', d3.forceLink(links).id(d => d.id).distance(150))
         .force('charge', d3.forceManyBody().strength(-400))
         .force('center', d3.forceCenter(width / 2, height / 2))
-        .force('collision', d3.forceCollide().radius(d => d.radius + 10));
+        .force('collision', d3.forceCollide().radius(d => d.radius + 15));
     
+    // Draw constellation lines
     const link = g.append('g').selectAll('line').data(links).join('line')
         .attr('class', 'constellation-line');
     
+    // Create node groups
     const nodeGroup = g.append('g').selectAll('g').data(nodes).join('g')
         .attr('class', 'node-group')
         .style('cursor', 'pointer')
@@ -112,29 +125,75 @@ function renderConstellation(data) {
                 d.fx = null; d.fy = null;
             }));
     
+    // Add glow effect (outer colored ring)
     nodeGroup.append('circle')
-        .attr('r', d => d.radius * 2)
-        .attr('fill', d => d.color)
-        .attr('opacity', 0.2);
+        .attr('r', d => d.radius + 4)
+        .attr('fill', 'none')
+        .attr('stroke', d => d.color)
+        .attr('stroke-width', 3)
+        .attr('opacity', 0.6)
+        .style('filter', d => `drop-shadow(0 0 ${d.radius/2}px ${d.color})`);
     
+    // Add white border circle
     nodeGroup.append('circle')
         .attr('r', d => d.radius)
-        .attr('fill', d => d.color)
-        .attr('stroke', '#fff')
-        .attr('stroke-width', 2)
-        .style('filter', d => `drop-shadow(0 0 ${d.radius}px ${d.color})`);
+        .attr('fill', '#fff')
+        .attr('stroke', d => d.color)
+        .attr('stroke-width', 2);
     
+    // Add favicon image (clipped to circle)
+    nodeGroup.each(function(d) {
+        const node = d3.select(this);
+        const size = d.radius * 2;
+        
+        // Create pattern for circular clipping
+        const patternId = `pattern-${d.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
+        
+        // Define pattern
+        svg.append('defs')
+            .append('pattern')
+            .attr('id', patternId)
+            .attr('width', 1)
+            .attr('height', 1)
+            .append('image')
+            .attr('href', d.faviconUrl)
+            .attr('width', size)
+            .attr('height', size)
+            .attr('x', -d.radius)
+            .attr('y', -d.radius)
+            .on('error', function() {
+                // Fallback: hide image, show colored circle instead
+                d3.select(this).style('display', 'none');
+                node.append('circle')
+                    .attr('r', d.radius - 2)
+                    .attr('fill', d.color);
+            });
+        
+        // Circle filled with favicon pattern
+        node.append('circle')
+            .attr('r', d.radius - 2)
+            .attr('fill', `url(#${patternId})`)
+            .attr('stroke', 'none');
+    });
+    
+    // Add domain label below favicon
     nodeGroup.append('text')
         .attr('class', 'node-label')
-        .attr('dy', d => d.radius + 20)
+        .attr('dy', d => d.radius + 18)
         .attr('text-anchor', 'middle')
-        .text(d => d.domain);
+        .style('fill', '#fff')
+        .style('font-size', '13px')
+        .style('font-weight', '500')
+        .style('text-shadow', '0 2px 4px rgba(0,0,0,0.8)')
+        .text(d => d.domain.length > 20 ? d.domain.substring(0, 18) + '...' : d.domain);
     
+    // Click handler
     nodeGroup.on('click', (event, d) => {
         event.stopPropagation();
         showNodeInfo(d, nodes, links);
     });
     
+    // Update positions on tick
     simulation.on('tick', () => {
         link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
             .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
@@ -153,7 +212,13 @@ function showNodeInfo(node, allNodes, allLinks) {
         return otherNode ? otherNode.domain : otherId;
     });
     
-    document.getElementById('panel-domain').textContent = node.domain;
+    // Add favicon to panel header
+    const faviconUrl = getFaviconUrl(node.domain);
+    document.getElementById('panel-domain').innerHTML = `
+        <img src="${faviconUrl}" style="width: 24px; height: 24px; vertical-align: middle; margin-right: 8px; border-radius: 4px;">
+        ${node.domain}
+    `;
+    
     document.getElementById('panel-visits').textContent = node.visitCount || 1;
     document.getElementById('panel-first').textContent = formatDate(node.firstVisit);
     document.getElementById('panel-last').textContent = formatDate(node.lastVisit);
@@ -169,7 +234,13 @@ function showNodeInfo(node, allNodes, allLinks) {
             const div = document.createElement('div');
             div.className = 'connection-item';
             div.style.borderLeftColor = node.color;
-            div.textContent = domain;
+            div.style.display = 'flex';
+            div.style.alignItems = 'center';
+            div.style.gap = '8px';
+            div.innerHTML = `
+                <img src="${getFaviconUrl(domain)}" style="width: 16px; height: 16px; border-radius: 2px;">
+                <span>${domain}</span>
+            `;
             div.onclick = () => {
                 const targetNode = allNodes.find(n => n.domain === domain);
                 if (targetNode) showNodeInfo(targetNode, allNodes, allLinks);
@@ -196,4 +267,5 @@ function formatDate(timestamp) {
     return date.toLocaleDateString();
 }
 
+// Initialize
 loadConstellationData();
