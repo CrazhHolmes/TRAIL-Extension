@@ -419,4 +419,22 @@ chrome.history.onVisited.addListener(() => {
   setTimeout(updateConstellationData, 1000); // Delay to let data be stored first
 });
 
+// Initial data load on startup
+updateConstellationData();
+
+// Debug function - call from background console to force refresh
+function debugConstellation() {
+  console.log('[TRAIL] Manual constellation refresh triggered');
+  updateConstellationData();
+  setTimeout(() => {
+    chrome.storage.local.get(['trail_nodes', 'trail_links'], (result) => {
+      console.log('[TRAIL] Current constellation data:', result);
+    });
+  }, 100);
+}
+
+// Make debug function available globally
+self.debugConstellation = debugConstellation;
+
 console.log('[TRAIL] Background script ready');
+console.log('[TRAIL] Run debugConstellation() in console to force refresh');
