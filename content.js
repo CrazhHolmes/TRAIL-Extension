@@ -1,9 +1,6 @@
-/* TRAIL v1.0 | Built by Wizardrytezch | github.com/CrazhHolmes | Patent Pending */
-
 /**
- * THE EXTRACTOR - Content Script
- * Extracts readable content from web pages using Mozilla's Readability.js
- * Sends extracted data to background script for storage
+ * TRAIL Content Script
+ * Extracts readable content using Mozilla's Readability.js
  */
 
 (function() {

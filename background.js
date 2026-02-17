@@ -1,8 +1,6 @@
-/* TRAIL v1.0 | Built by Wizardrytezch | github.com/CrazhHolmes | Patent Pending */
-
 /**
- * THE GHOST - Background Script
- * Captures browsing history, extracts content, stores locally in IndexedDB
+ * TRAIL Background Script
+ * Captures browsing history, stores locally in IndexedDB
  * Privacy-First: Zero external API calls. All data stays local.
  */
 

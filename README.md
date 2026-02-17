@@ -1,156 +1,55 @@
-# TRAIL - Automatic Visual History Mapper
+# TRAIL — Personal Browsing Visualizer
 
-> **Built by [CrazhHolmes](https://github.com/CrazhHolmes)** | ⭐ [Star this repo](https://github.com/CrazhHolmes) | Patent Pending
+Transform your browsing history into an interactive constellation map.
 
-TRAIL transforms your browsing history into an interactive constellation map, visualizing your digital journeys across the web.
+![TRAIL Screenshot](screenshot.png)
 
-![TRAIL Constellation Map](screenshot.png)
+## How to Use
 
-## 🌟 Features
+1. **Install** — Load as unpacked extension in Chrome/Brave
+2. **Browse** — Visit websites normally
+3. **Visualize** — Click the TRAIL icon → "Open Constellation Map"
+4. **Explore** — Drag nodes, zoom, see your browsing patterns
 
-### THE GHOST - Smart History Capture
-- Automatically captures every URL you visit
-- Extracts readable content using Mozilla's Readability.js
-- Stores data locally in IndexedDB - **zero external APIs**
-- Privacy-first: Your data never leaves your browser
-- Auto-purges data after 30 days (configurable)
+## Features
 
-### THE CARTOGRAPHER - Constellation Visualization
-- Beautiful force-directed graph on HTML5 Canvas
-- Each website is a node (size = dwell time, color = category)
-- Connections show your browsing flow
-- Physics simulation with zoom, pan, and drag
-- Detects "Wormholes": surprising jumps between topics
+- **Constellation Map** — Websites as nodes, connections as browsing flow
+- **Category Colors** — Tech (blue), Social (pink), News (orange), etc.
+- **Physics Simulation** — Force-directed graph, drag to rearrange
+- **Timeline** — 24h/7d/30d views
+- **Export** — PNG image or JSON data
 
-### THE STORYTELLER - NLP Insights
-- Entity extraction (People, Places, Organizations) using compromise.js
-- "Journey Summaries": "You traveled from [Topic A] to [Topic B]"
-- Highlights interesting patterns in your browsing
-
-### THE TIME MACHINE - Timeline Replay
-- 24hr, 7-day, 30-day views
-- Timeline slider to scrub through history
-- Replay button: Animate your browsing session
-- Pause/Play controls
-
-### Export & Share
-- **Share Your Trail**: Generate PNG of your constellation map
-- **JSON Export**: Portable archive of your wanderings
-- Watermarked with your digital identity
-
-## 🚀 Installation
-
-### Chrome/Edge (Chromium-based browsers)
-
-1. **Download the extension**
-   ```bash
-   git clone https://github.com/CrazhHolmes/trail-extension.git
-   cd trail-extension
-   ```
-
-2. **Open Chrome Extensions page**
-   - Navigate to `chrome://extensions`
-   - Enable "Developer mode" (toggle in top-right)
-
-3. **Load the extension**
-   - Click "Load unpacked"
-   - Select the `extension` folder
-   - TRAIL will now open on every new tab!
-
-### Firefox (requires manifest v2 conversion)
-
-Firefox support coming soon via webextension-polyfill.
-
-## 📁 Project Structure
-
-```
-extension/
-├── manifest.json          # Extension manifest (Manifest V3)
-├── background.js          # THE GHOST - History capture
-├── content.js            # Content extraction script
-├── newtab.html           # New Tab page UI
-├── newtab.js             # THE CARTOGRAPHER + THE STORYTELLER + THE TIME MACHINE
-├── styles.css            # Constellation theme styles
-├── lib/
-│   └── Readability.js    # Mozilla's article extractor
-└── icons/
-    ├── icon16.png
-    ├── icon48.png
-    └── icon128.png
-```
-
-## 🔒 Privacy
-
-TRAIL is designed with privacy as a core principle:
+## Privacy
 
 - ✅ All data stored locally in IndexedDB
 - ✅ Zero external API calls
 - ✅ No tracking or analytics
-- ✅ No backend server
-- ✅ Open source - audit the code yourself
-- ✅ Auto-purges old data (configurable)
+- ✅ Auto-purges after 30 days (configurable)
 
-## 🎨 Category Colors
+## Installation
 
-| Category | Color | Example Sites |
-|----------|-------|---------------|
-| Tech | 🔵 Blue | GitHub, Stack Overflow, MDN |
-| Social | 🩷 Pink | Twitter, Reddit, LinkedIn |
-| News | 🟠 Orange | BBC, NYT, TechCrunch |
-| Education | 🟢 Green | Wikipedia, Khan Academy, arXiv |
-| Shopping | 🔴 Red | Amazon, eBay, Etsy |
-| Entertainment | 🟣 Purple | Netflix, Spotify, YouTube |
-| Finance | 🩵 Teal | PayPal, Coinbase, Banks |
-| Other | ⚪ Gray | Everything else |
+```bash
+# Clone
+git clone https://github.com/CrazhHolmes/TRAIL-Extension.git
 
-## 🛠️ Development
-
-### Zero-Cost Constraints
-
-This project follows strict zero-cost principles:
-
-- ❌ No backend server (GitHub Pages for landing only)
-- ❌ No paid APIs (all client-side processing)
-- ❌ No external databases (IndexedDB only)
-- ❌ No build steps required (vanilla JS)
-- ❌ No tracking/analytics code
-
-### BLACK BOX Notice
-
-The `calculateSemanticProximity()` function in `newtab.js` is a **placeholder** for the temporal-semantic clustering algorithm. The actual TF-IDF similarity implementation will be released post-patent filing.
-
-**Classification:** GREY (Visualization logic disclosed, clustering algorithm BLACK)  
-**Patent:** Provisional #019 Filed
-
-## 🤝 Contributing
-
-Contributions welcome! Please ensure all commits include:
-
-```
-Built by CrazhHolmes | github.com/CrazhHolmes
+# Load in Chrome/Brave
+# 1. Go to chrome://extensions
+# 2. Enable Developer Mode
+# 3. Click "Load unpacked"
+# 4. Select the extension folder
 ```
 
-## 📜 License
+## How It Works
 
-MIT License - See [LICENSE](LICENSE) for details.
+1. **Background Script** — Captures URLs via chrome.history API
+2. **Content Script** — Extracts page text using Readability.js
+3. **Constellation** — Canvas-based visualization with physics
+4. **All Local** — IndexedDB only, no server
 
-**Patent Pending** - Unauthorized commercial use of the temporal-semantic clustering algorithm prohibited.
+## Built By
 
-## 🙏 Credits
+[Wizardrytezch](https://github.com/CrazhHolmes)
 
-- [Mozilla Readability](https://github.com/mozilla/readability) - Article extraction
-- [compromise.js](https://compromise.cool/) - NLP in the browser
-- [spencermountain](https://github.com/spencermountain) - compromise.js creator
+## License
 
----
-
-<p align="center">
-  <strong>Built with ❤️ by <a href="https://github.com/CrazhHolmes">CrazhHolmes</a></strong><br>
-  <a href="https://github.com/CrazhHolmes">⭐ Star this repo</a> • 
-  <a href="https://github.com/CrazhHolmes/trail-extension/issues">🐛 Report Bug</a> • 
-  <a href="https://github.com/CrazhHolmes/trail-extension/issues">💡 Request Feature</a>
-</p>
-
-<p align="center">
-  <sub>Patent Pending • FTX Protocol Enforced</sub>
-</p>
+MIT — Personal use welcome.
