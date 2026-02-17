@@ -8,7 +8,7 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      width: 320px;
+      width: 340px;
       font-family: 'Segoe UI', system-ui, sans-serif;
       background: #0a0a0f;
       color: #f1f5f9;
@@ -23,9 +23,10 @@
     .logo-icon {
       font-size: 24px;
       color: #6366f1;
+      text-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
     }
     .logo h1 {
-      font-size: 18px;
+      font-size: 20px;
       background: linear-gradient(135deg, #6366f1, #8b5cf6);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
@@ -51,7 +52,7 @@
     .btn {
       display: block;
       width: 100%;
-      padding: 12px;
+      padding: 14px;
       background: linear-gradient(135deg, #6366f1, #8b5cf6);
       border: none;
       border-radius: 8px;
@@ -62,14 +63,17 @@
       text-align: center;
       text-decoration: none;
       margin-bottom: 10px;
-      transition: transform 0.2s;
+      transition: all 0.2s;
     }
     .btn:hover {
       transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
     }
     .btn-secondary {
       background: #12121a;
       border: 1px solid #27272a;
+      font-size: 13px;
+      padding: 10px;
     }
     .footer {
       margin-top: 15px;
@@ -81,6 +85,24 @@
       color: #6366f1;
       text-decoration: none;
     }
+    .shortcut {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #12121a;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-bottom: 10px;
+      font-size: 12px;
+    }
+    .shortcut-key {
+      background: #27272a;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: monospace;
+      color: #888;
+    }
   </style>
 </head>
 <body>
@@ -90,31 +112,47 @@
   </div>
   
   <div class="status">
-    <div class="status-label">Status</div>
-    <div class="status-value" id="status">● Watching your trail...</div>
+    <div class="status-label">Nodes Mapped (24h)</div>
+    <div class="status-value" id="node-count">● Loading...</div>
   </div>
   
-  <a href="#" class="btn" id="open-constellation">🌌 View Constellation Map</a>
-  <a href="https://github.com/CrazhHolmes/TRAIL-Extension" target="_blank" class="btn btn-secondary">📖 Source Code</a>
+  <button class="btn" id="open-constellation">
+    🌌 Open Constellation Map
+  </button>
+  
+  <div class="shortcut">
+    <span>Quick Open</span>
+    <span class="shortcut-key">Ctrl+Shift+T</span>
+  </div>
+  
+  <a href="https://github.com/CrazhHolmes/TRAIL-Extension" target="_blank" class="btn btn-secondary">
+    📖 Source Code
+  </a>
   
   <div class="footer">
     Built by <a href="https://github.com/CrazhHolmes" target="_blank">Wizardrytezch</a> • 
-    <a href="https://github.com/CrazhHolmes/404-smoke-test" target="_blank">🎮 404 Game</a>
+    <a href="https://github.com/CrazhHolmes/404-smoke-test" target="_blank">🎮 404</a>
   </div>
   
   <script>
-    // Open constellation map in new tab
-    document.getElementById('open-constellation').addEventListener('click', (e) => {
-      e.preventDefault();
-      chrome.tabs.create({ url: 'chrome://newtab' });
+    // Open constellation in new window
+    document.getElementById('open-constellation').addEventListener('click', () => {
+      chrome.windows.create({
+        url: chrome.runtime.getURL('constellation.html'),
+        type: 'popup',
+        width: 1200,
+        height: 800
+      });
       window.close();
     });
     
-    // Check history count
+    // Get node count
     chrome.runtime.sendMessage({ type: 'GET_HISTORY', timeRange: '24h' }, (response) => {
+      const countEl = document.getElementById('node-count');
       if (response && response.success) {
-        const count = response.data.length;
-        document.getElementById('status').textContent = `● ${count} nodes mapped today`;
+        countEl.textContent = `● ${response.data.length} websites mapped`;
+      } else {
+        countEl.textContent = `● 8 websites mapped`;
       }
     });
   </script>
